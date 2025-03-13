@@ -1,26 +1,60 @@
 
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
-import { BarChart, PieChart, LineChart } from "@/components/ui/chart";
-import { BookOpen, CheckSquare, BarChart2, TrendingUp, ChevronRight } from "lucide-react";
+import { BarChart, LineChart, PieChart } from "@/components/ui/chart";
+import { DatePicker } from "@/components/ui/calendar";
+import { CalendarEvents } from "@/components/calendar/CalendarEvents";
+import { useAuth } from "@/contexts/AuthContext";
+import { GoogleAuth } from "@/components/auth/GoogleAuth";
+import { Calendar, CheckSquare, Clock, BarChart as BarChartIcon, BookOpen } from "lucide-react";
 
 const Dashboard = () => {
-  const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
+  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(
+    new Date()
+  );
 
   // Sample data for charts
   const habitData = {
     labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
     datasets: [
       {
-        label: "Completed",
-        data: [4, 5, 3, 6, 4, 3, 5],
-        backgroundColor: "#60A5FA",
+        label: "Meditation",
+        data: [15, 20, 15, 25, 30, 35, 20],
+        backgroundColor: "#4c6ef588",
       },
       {
-        label: "Missed",
-        data: [1, 0, 2, 0, 1, 2, 0],
-        backgroundColor: "#F87171",
+        label: "Reading",
+        data: [35, 25, 45, 40, 30, 35, 40],
+        backgroundColor: "#38b2ac88",
+      },
+      {
+        label: "Exercise",
+        data: [25, 30, 20, 25, 40, 35, 50],
+        backgroundColor: "#ed8a0a88",
+      },
+    ],
+  };
+
+  const productivityData = {
+    labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
+    datasets: [
+      {
+        label: "Journal Entries",
+        data: [4, 5, 3, 6],
+        borderColor: "#4c6ef5",
+        backgroundColor: "#4c6ef510",
+        fill: true,
+        tension: 0.4,
+      },
+      {
+        label: "Tasks Completed",
+        data: [7, 12, 8, 15],
+        borderColor: "#38b2ac",
+        backgroundColor: "#38b2ac10",
+        fill: true,
+        tension: 0.4,
       },
     ],
   };
@@ -29,252 +63,202 @@ const Dashboard = () => {
     labels: ["Completed", "In Progress", "Not Started"],
     datasets: [
       {
-        data: [65, 20, 15],
-        backgroundColor: ["#10B981", "#60A5FA", "#F87171"],
-        borderWidth: 0,
+        data: [63, 25, 12],
+        backgroundColor: ["#38b2ac", "#4c6ef5", "#e2e8f0"],
+        borderColor: ["#38b2ac", "#4c6ef5", "#e2e8f0"],
       },
     ],
   };
-
-  const productivityTrendData = {
-    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-    datasets: [
-      {
-        label: "Productivity Score",
-        data: [65, 70, 68, 75, 82, 85],
-        borderColor: "#8B5CF6",
-        backgroundColor: "rgba(139, 92, 246, 0.1)",
-        fill: true,
-        tension: 0.4,
-      },
-    ],
-  };
-
-  const today = new Date();
-  const formattedDate = today.toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  });
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div>
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">{formattedDate}</p>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">
+            {isAuthenticated 
+              ? `Welcome back, ${user?.name}!` 
+              : "Monitor your productivity and track your progress"}
+          </p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => navigate("/journal")} className="bg-journal-blue hover:bg-journal-blue/90">
-            New Journal Entry
-          </Button>
-          <Button onClick={() => navigate("/tasks")} variant="outline">
-            Add Task
-          </Button>
+        <div className="mt-4 md:mt-0 w-full md:w-auto">
+          <DatePicker
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
+          />
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          {
-            title: "Journal Entries",
-            value: "12",
-            description: "Last 30 days",
-            icon: <BookOpen className="h-5 w-5 text-journal-blue" />,
-            color: "bg-journal-blue/10",
-          },
-          {
-            title: "Tasks Completed",
-            value: "24",
-            description: "Out of 36 tasks",
-            icon: <CheckSquare className="h-5 w-5 text-journal-green" />,
-            color: "bg-journal-green/10",
-          },
-          {
-            title: "Habit Streak",
-            value: "7 days",
-            description: "Daily meditation",
-            icon: <BarChart2 className="h-5 w-5 text-journal-purple" />,
-            color: "bg-journal-purple/10",
-          },
-          {
-            title: "Productivity Score",
-            value: "85%",
-            description: "15% increase",
-            icon: <TrendingUp className="h-5 w-5 text-journal-pink" />,
-            color: "bg-journal-pink/10",
-          },
-        ].map((stat, index) => (
-          <Card key={index}>
-            <CardContent className="p-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">{stat.title}</p>
-                  <p className="text-2xl font-bold">{stat.value}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
-                </div>
-                <div className={`${stat.color} p-2 rounded-full`}>
-                  {stat.icon}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Main Content */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Recent Journal Entries */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xl">Recent Journal Entries</CardTitle>
-            <CardDescription>Your latest thoughts and reflections</CardDescription>
+      {!isAuthenticated ? (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Welcome to ProductiveJournal</CardTitle>
+            <CardDescription>
+              Sign in with Google to access all features including calendar integration
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {[
-                {
-                  title: "Project Kickoff",
-                  date: "Today, 9:30 AM",
-                  excerpt: "Had a productive kickoff meeting for the new project. Feeling optimistic about the timeline.",
-                  mood: "Energetic",
-                  moodColor: "bg-green-100 text-green-800",
-                },
-                {
-                  title: "Mid-week Reflection",
-                  date: "Yesterday, 6:15 PM",
-                  excerpt: "Reflecting on work-life balance. Need to better manage project deadlines.",
-                  mood: "Thoughtful",
-                  moodColor: "bg-blue-100 text-blue-800",
-                },
-                {
-                  title: "Learning Session",
-                  date: "May 15, 2:45 PM",
-                  excerpt: "Spent time learning a new framework. Making steady progress but need more practice.",
-                  mood: "Focused",
-                  moodColor: "bg-purple-100 text-purple-800",
-                },
-              ].map((entry, index) => (
-                <div key={index} className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-medium">{entry.title}</h3>
-                    <span className="text-xs text-muted-foreground">{entry.date}</span>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-3">{entry.excerpt}</p>
-                  <div className="flex justify-between items-center">
-                    <span className={`text-xs px-2 py-1 rounded-full ${entry.moodColor}`}>
-                      {entry.mood}
-                    </span>
-                    <Button variant="ghost" size="sm" className="h-8 text-journal-blue hover:text-journal-blue/80">
-                      Read More <ChevronRight className="h-4 w-4 ml-1" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+            <div className="max-w-sm mx-auto">
+              <GoogleAuth />
             </div>
-            <div className="mt-4 text-center">
-              <Button variant="outline" className="w-full" onClick={() => navigate("/journal")}>
-                View All Journal Entries
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">
+              Journal Entries
+            </CardTitle>
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">12</div>
+            <p className="text-xs text-muted-foreground">
+              +2 from last month
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">
+              Tasks Completed
+            </CardTitle>
+            <CheckSquare className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">24</div>
+            <p className="text-xs text-muted-foreground">
+              +5 from last week
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">
+              Current Streak
+            </CardTitle>
+            <BarChartIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">7 days</div>
+            <p className="text-xs text-muted-foreground">
+              Your longest streak: 14 days
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">
+              Productive Hours
+            </CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">32h</div>
+            <p className="text-xs text-muted-foreground">
+              +3h from last week
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Habit Consistency</CardTitle>
+            <CardDescription>
+              Your weekly habit tracking performance
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <BarChart data={habitData} height={300} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Task Completion</CardTitle>
+            <CardDescription>
+              Current task status distribution
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PieChart data={taskCompletionData} height={240} />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2 mb-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Productivity Trends</CardTitle>
+            <CardDescription>
+              Your productivity over the last month
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <LineChart data={productivityData} height={300} />
+          </CardContent>
+        </Card>
+
+        <CalendarEvents />
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Today's Focus</CardTitle>
+            <CardDescription>
+              Your priority tasks for today
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              <li className="flex items-center">
+                <div className="h-2 w-2 rounded-full bg-journal-green mr-2"></div>
+                <span>Complete project proposal</span>
+              </li>
+              <li className="flex items-center">
+                <div className="h-2 w-2 rounded-full bg-journal-blue mr-2"></div>
+                <span>Schedule team meeting</span>
+              </li>
+              <li className="flex items-center">
+                <div className="h-2 w-2 rounded-full bg-journal-purple mr-2"></div>
+                <span>Review quarterly goals</span>
+              </li>
+              <li className="flex items-center">
+                <div className="h-2 w-2 rounded-full bg-journal-pink mr-2"></div>
+                <span>Daily journal entry</span>
+              </li>
+            </ul>
+            <div className="mt-4">
+              <Button size="sm" variant="outline" className="w-full">
+                View All Tasks
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Task Overview */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xl">Task Overview</CardTitle>
-              <CardDescription>Status of your current tasks</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64">
-                <PieChart 
-                  data={taskCompletionData} 
-                  options={{
-                    plugins: {
-                      legend: {
-                        position: 'right',
-                      }
-                    }
-                  }}
-                />
-              </div>
-              <div className="mt-4 text-center">
-                <Button variant="outline" className="w-full" onClick={() => navigate("/tasks")}>
-                  Manage Tasks
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xl">Upcoming Tasks</CardTitle>
-              <CardDescription>Due in the next few days</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {[
-                  {
-                    title: "Complete project proposal",
-                    due: "Today, 5:00 PM",
-                    priority: "High",
-                    priorityColor: "bg-red-100 text-red-800",
-                  },
-                  {
-                    title: "Review client feedback",
-                    due: "Tomorrow, 11:00 AM",
-                    priority: "Medium",
-                    priorityColor: "bg-yellow-100 text-yellow-800",
-                  },
-                  {
-                    title: "Team weekly meeting",
-                    due: "May 18, 9:30 AM",
-                    priority: "Medium",
-                    priorityColor: "bg-yellow-100 text-yellow-800",
-                  },
-                ].map((task, index) => (
-                  <div key={index} className="flex justify-between items-center p-3 border rounded-lg">
-                    <div>
-                      <h3 className="font-medium text-sm">{task.title}</h3>
-                      <p className="text-xs text-muted-foreground">{task.due}</p>
-                    </div>
-                    <span className={`text-xs px-2 py-1 rounded-full ${task.priorityColor}`}>
-                      {task.priority}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* Charts */}
-      <div className="grid md:grid-cols-2 gap-6">
-        <Card>
+        <Card className="md:col-span-2">
           <CardHeader>
-            <CardTitle className="text-xl">Habit Completion</CardTitle>
-            <CardDescription>Daily habit tracking for the last week</CardDescription>
+            <CardTitle>Journal Prompt</CardTitle>
+            <CardDescription>
+              Inspiration for today's journal entry
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-80">
-              <BarChart data={habitData} />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">Productivity Trend</CardTitle>
-            <CardDescription>Your productivity score over time</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-80">
-              <LineChart data={productivityTrendData} />
+            <p className="italic text-muted-foreground">
+              "What are three small wins from yesterday, and what's one thing you want to accomplish today?"
+            </p>
+            <div className="mt-4">
+              <Button size="sm" className="w-full">
+                Start Writing
+              </Button>
             </div>
           </CardContent>
         </Card>

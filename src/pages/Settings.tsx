@@ -1,185 +1,137 @@
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React from 'react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
-import { useState } from "react";
+import { useAuth } from '@/contexts/AuthContext';
+import { GoogleAuth } from '@/components/auth/GoogleAuth';
+import { Calendar, LogOut, Settings as SettingsIcon, User } from 'lucide-react';
 
 const Settings = () => {
-  const { toast } = useToast();
-  const [notifications, setNotifications] = useState({
-    email: true,
-    push: false,
-    taskReminders: true,
-    journalReminders: false,
-    weeklyReport: true,
-  });
-
-  const [appearance, setAppearance] = useState({
-    darkMode: false,
-    compactView: false,
-  });
-
-  const [privacy, setPrivacy] = useState({
-    anonymousData: true,
-    publicProfile: false,
-  });
-
-  const saveSettings = () => {
-    toast({
-      title: "Settings saved",
-      description: "Your preferences have been updated.",
-    });
-  };
+  const { user, isAuthenticated, logout, hasCalendarAccess, setCalendarAccess } = useAuth();
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div>
+    <div className="max-w-4xl mx-auto">
+      <header className="mb-8">
         <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground">Manage your account preferences</p>
-      </div>
+        <p className="text-muted-foreground mt-2">
+          Manage your account settings and preferences
+        </p>
+      </header>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Notifications</CardTitle>
-          <CardDescription>Control how and when you receive notifications</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="email-notifications">Email Notifications</Label>
-              <p className="text-muted-foreground text-sm">Receive emails about account activity</p>
-            </div>
-            <Switch
-              id="email-notifications"
-              checked={notifications.email}
-              onCheckedChange={(checked) => setNotifications({ ...notifications, email: checked })}
-            />
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="push-notifications">Push Notifications</Label>
-              <p className="text-muted-foreground text-sm">Receive push notifications on your devices</p>
-            </div>
-            <Switch
-              id="push-notifications"
-              checked={notifications.push}
-              onCheckedChange={(checked) => setNotifications({ ...notifications, push: checked })}
-            />
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="task-reminders">Task Reminders</Label>
-              <p className="text-muted-foreground text-sm">Get reminders about upcoming tasks</p>
-            </div>
-            <Switch
-              id="task-reminders"
-              checked={notifications.taskReminders}
-              onCheckedChange={(checked) => setNotifications({ ...notifications, taskReminders: checked })}
-            />
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="journal-reminders">Journal Reminders</Label>
-              <p className="text-muted-foreground text-sm">Daily reminders to write in your journal</p>
-            </div>
-            <Switch
-              id="journal-reminders"
-              checked={notifications.journalReminders}
-              onCheckedChange={(checked) => setNotifications({ ...notifications, journalReminders: checked })}
-            />
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="weekly-report">Weekly Report</Label>
-              <p className="text-muted-foreground text-sm">Get weekly summaries of your productivity</p>
-            </div>
-            <Switch
-              id="weekly-report"
-              checked={notifications.weeklyReport}
-              onCheckedChange={(checked) => setNotifications({ ...notifications, weeklyReport: checked })}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid gap-6">
+        {/* Account settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <User className="mr-2 h-5 w-5" />
+              Account
+            </CardTitle>
+            <CardDescription>
+              Manage your account settings and connected services
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {isAuthenticated ? (
+              <div className="flex items-center gap-4">
+                {user?.picture && (
+                  <img 
+                    src={user.picture} 
+                    alt={user.name} 
+                    className="w-12 h-12 rounded-full"
+                  />
+                )}
+                <div>
+                  <h3 className="font-medium">{user?.name}</h3>
+                  <p className="text-sm text-muted-foreground">{user?.email}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm">
+                  Connect your Google account to enable calendar integration and other features.
+                </p>
+                <GoogleAuth />
+              </div>
+            )}
+          </CardContent>
+          {isAuthenticated && (
+            <CardFooter>
+              <Button variant="outline" onClick={logout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign out
+              </Button>
+            </CardFooter>
+          )}
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Appearance</CardTitle>
-          <CardDescription>Customize how the app looks</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="dark-mode">Dark Mode</Label>
-              <p className="text-muted-foreground text-sm">Use dark theme across the application</p>
-            </div>
-            <Switch
-              id="dark-mode"
-              checked={appearance.darkMode}
-              onCheckedChange={(checked) => setAppearance({ ...appearance, darkMode: checked })}
-            />
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="compact-view">Compact View</Label>
-              <p className="text-muted-foreground text-sm">Display more content with less spacing</p>
-            </div>
-            <Switch
-              id="compact-view"
-              checked={appearance.compactView}
-              onCheckedChange={(checked) => setAppearance({ ...appearance, compactView: checked })}
-            />
-          </div>
-        </CardContent>
-      </Card>
+        {/* Calendar Integration */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Calendar className="mr-2 h-5 w-5" />
+              Calendar Integration
+            </CardTitle>
+            <CardDescription>
+              Connect to Google Calendar to sync your tasks and events
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {isAuthenticated ? (
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Enable Google Calendar</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Sync your tasks and events with Google Calendar
+                  </p>
+                </div>
+                <Switch 
+                  checked={hasCalendarAccess}
+                  onCheckedChange={setCalendarAccess}
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Sign in with Google to enable calendar integration
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Privacy</CardTitle>
-          <CardDescription>Manage your privacy settings</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="anonymous-data">Anonymous Usage Data</Label>
-              <p className="text-muted-foreground text-sm">Allow anonymous collection of usage statistics</p>
+        {/* General settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <SettingsIcon className="mr-2 h-5 w-5" />
+              General
+            </CardTitle>
+            <CardDescription>
+              Configure general application settings
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Email Notifications</Label>
+                <p className="text-sm text-muted-foreground">
+                  Receive email notifications for reminders and updates
+                </p>
+              </div>
+              <Switch />
             </div>
-            <Switch
-              id="anonymous-data"
-              checked={privacy.anonymousData}
-              onCheckedChange={(checked) => setPrivacy({ ...privacy, anonymousData: checked })}
-            />
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="public-profile">Public Profile</Label>
-              <p className="text-muted-foreground text-sm">Make your profile visible to others</p>
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Dark Mode</Label>
+                <p className="text-sm text-muted-foreground">
+                  Switch between light and dark theme
+                </p>
+              </div>
+              <Switch />
             </div>
-            <Switch
-              id="public-profile"
-              checked={privacy.publicProfile}
-              onCheckedChange={(checked) => setPrivacy({ ...privacy, publicProfile: checked })}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="flex justify-end">
-        <Button 
-          className="bg-journal-blue hover:bg-journal-blue/90" 
-          onClick={saveSettings}
-        >
-          Save Settings
-        </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

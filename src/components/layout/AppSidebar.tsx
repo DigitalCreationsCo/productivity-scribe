@@ -10,7 +10,8 @@ import {
   SidebarMenuButton, 
   SidebarMenuItem, 
   SidebarTrigger,
-  SidebarHeader
+  SidebarHeader,
+  SidebarFooter
 } from "@/components/ui/sidebar";
 import { 
   Calendar, 
@@ -19,12 +20,16 @@ import {
   CheckSquare, 
   BarChart2, 
   Settings as SettingsIcon,
-  LogOut
+  LogOut,
+  User
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const AppSidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, isAuthenticated, logout } = useAuth();
 
   const items = [
     {
@@ -86,6 +91,7 @@ const AppSidebar = () => {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
             <SidebarMenu>
@@ -99,6 +105,21 @@ const AppSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      
+      {isAuthenticated && user && (
+        <SidebarFooter className="p-4">
+          <div className="flex items-center gap-2">
+            <Avatar>
+              <AvatarImage src={user.picture} alt={user.name} />
+              <AvatarFallback>{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div className="overflow-hidden">
+              <p className="text-sm font-medium truncate">{user.name}</p>
+              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+            </div>
+          </div>
+        </SidebarFooter>
+      )}
     </Sidebar>
   );
 };
