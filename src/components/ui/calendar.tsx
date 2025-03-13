@@ -1,64 +1,132 @@
-import * as React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { DayPicker } from "react-day-picker";
 
+import { useState } from "react";
+import { Calendar as CalendarIcon, Clock } from "lucide-react";
+import { Calendar as CalComp } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
+import { format } from "date-fns";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker>;
+interface DatePickerProps {
+  selectedDate?: Date;
+  onDateChange: (date: Date | undefined) => void;
+  showTimePicker?: boolean;
+}
 
-function Calendar({
-  className,
-  classNames,
-  showOutsideDays = true,
-  ...props
-}: CalendarProps) {
+export function DatePicker({
+  selectedDate,
+  onDateChange,
+  showTimePicker = false,
+}: DatePickerProps) {
+  const [open, setOpen] = useState(false);
+  const [hours, setHours] = useState(new Date().getHours().toString());
+  const [minutes, setMinutes] = useState(new Date().getMinutes().toString());
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (!date) {
+      onDateChange(undefined);
+      return;
+    }
+
+    if (showTimePicker && hours && minutes) {
+      const newDate = new Date(date);
+      newDate.setHours(parseInt(hours, 10));
+      newDate.setMinutes(parseInt(minutes, 10));
+      onDateChange(newDate);
+    } else {
+      onDateChange(date);
+    }
+  };
+
+  const handleTimeChange = () => {
+    if (selectedDate && hours && minutes) {
+      const newDate = new Date(selectedDate);
+      newDate.setHours(parseInt(hours, 10));
+      newDate.setMinutes(parseInt(minutes, 10));
+      onDateChange(newDate);
+    }
+  };
+
   return (
-    <DayPicker
-      showOutsideDays={showOutsideDays}
-      className={cn("p-3", className)}
-      classNames={{
-        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-        month: "space-y-4",
-        caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
-        nav: "space-x-1 flex items-center",
-        nav_button: cn(
-          buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
-        ),
-        nav_button_previous: "absolute left-1",
-        nav_button_next: "absolute right-1",
-        table: "w-full border-collapse space-y-1",
-        head_row: "flex",
-        head_cell:
-          "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-        row: "flex w-full mt-2",
-        cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-        day: cn(
-          buttonVariants({ variant: "ghost" }),
-          "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
-        ),
-        day_range_end: "day-range-end",
-        day_selected:
-          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-        day_today: "bg-accent text-accent-foreground",
-        day_outside:
-          "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
-        day_disabled: "text-muted-foreground opacity-50",
-        day_range_middle:
-          "aria-selected:bg-accent aria-selected:text-accent-foreground",
-        day_hidden: "invisible",
-        ...classNames,
-      }}
-      components={{
-        IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
-        IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />,
-      }}
-      {...props}
-    />
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant={"outline"}
+          className={cn(
+            "w-full justify-start text-left font-normal",
+            !selectedDate && "text-muted-foreground"
+          )}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {selectedDate ? (
+            showTimePicker ? (
+              format(selectedDate, "PPP p") // Date with time
+            ) : (
+              format(selectedDate, "PPP") // Date only
+            )
+          ) : (
+            <span>Pick a date</span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <CalComp
+          mode="single"
+          selected={selectedDate}
+          onSelect={handleDateSelect}
+          initialFocus
+        />
+        {showTimePicker && (
+          <div className="p-3 border-t">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <Label>Time</Label>
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              <div className="grid gap-1">
+                <Label htmlFor="hours" className="text-xs">Hours</Label>
+                <Input
+                  id="hours"
+                  className="w-16 h-8"
+                  value={hours}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "" || (/^\d+$/.test(val) && parseInt(val, 10) >= 0 && parseInt(val, 10) <= 23)) {
+                      setHours(val);
+                    }
+                  }}
+                  onBlur={handleTimeChange}
+                />
+              </div>
+              <span className="text-xl mt-6">:</span>
+              <div className="grid gap-1">
+                <Label htmlFor="minutes" className="text-xs">Minutes</Label>
+                <Input
+                  id="minutes"
+                  className="w-16 h-8"
+                  value={minutes}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "" || (/^\d+$/.test(val) && parseInt(val, 10) >= 0 && parseInt(val, 10) <= 59)) {
+                      setMinutes(val);
+                    }
+                  }}
+                  onBlur={handleTimeChange}
+                />
+              </div>
+              <Button
+                size="sm"
+                className="mt-6 h-8"
+                onClick={handleTimeChange}
+              >
+                Apply
+              </Button>
+            </div>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }
-Calendar.displayName = "Calendar";
-
-export { Calendar };
