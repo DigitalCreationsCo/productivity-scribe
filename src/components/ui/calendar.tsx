@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Calendar as CalendarIcon, Clock } from "lucide-react";
-import { Calendar as CalComp } from "@/components/ui/calendar";
+import { DayPicker } from "react-day-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -72,11 +72,12 @@ export function DatePicker({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
-        <CalComp
+        <DayPicker
           mode="single"
           selected={selectedDate}
           onSelect={handleDateSelect}
           initialFocus
+          className={cn("p-3 pointer-events-auto")}
         />
         {showTimePicker && (
           <div className="p-3 border-t">
@@ -128,5 +129,15 @@ export function DatePicker({
         )}
       </PopoverContent>
     </Popover>
+  );
+}
+
+// Export a simple Calendar component for use elsewhere
+export function Calendar({ className, ...props }: React.ComponentProps<typeof DayPicker>) {
+  return (
+    <DayPicker 
+      className={cn("p-3 pointer-events-auto", className)} 
+      {...props} 
+    />
   );
 }

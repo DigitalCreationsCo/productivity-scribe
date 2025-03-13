@@ -22,7 +22,7 @@ interface ChartData {
     label?: string;
     data: (number | null)[];
     backgroundColor?: string | string[];
-    borderColor?: string;
+    borderColor?: string | string[];
     fill?: boolean;
     tension?: number;
   }[];
@@ -114,9 +114,13 @@ export const LineChart = ({ data, options, className }: ChartProps) => {
               key={index}
               type="monotone"
               dataKey={dataset.label || `Dataset ${index}`}
-              stroke={dataset.borderColor || COLORS[index % COLORS.length]}
+              stroke={Array.isArray(dataset.borderColor) 
+                ? dataset.borderColor[0] 
+                : dataset.borderColor || COLORS[index % COLORS.length]}
               fill={dataset.fill 
-                ? dataset.backgroundColor || `${COLORS[index % COLORS.length]}20` 
+                ? (Array.isArray(dataset.backgroundColor) 
+                  ? `${dataset.backgroundColor[0]}20` 
+                  : (dataset.backgroundColor || `${COLORS[index % COLORS.length]}20`)) 
                 : undefined}
               activeDot={{ r: 8 }}
               dot={{ r: 4 }}
