@@ -1,6 +1,6 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useApp } from '@/contexts/AppContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar, ArrowRight, Check, Loader2 } from 'lucide-react';
@@ -11,6 +11,7 @@ import { useSyncCalendarEvents } from '@/services/googleCalendar';
 
 export function CalendarIntegrationFlow() {
   const { user, isAuthenticated, setCalendarAccess, hasCalendarAccess } = useAuth();
+  const { setCalendarEvents, clearCalendarEvents, setLastSyncDate, setIsSyncing } = useApp();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -37,11 +38,17 @@ export function CalendarIntegrationFlow() {
   };
 
   const handleSyncNow = async () => {
+    setIsSyncing(true);
     try {
-      await syncMutation.mutateAsync({
+      clearCalendarEvents();
+      
+      const events = await syncMutation.mutateAsync({
         startDate,
         endDate,
       });
+      
+      setCalendarEvents(events);
+      setLastSyncDate(new Date());
       
       toast({
         title: "Calendar Data Synced",
@@ -56,6 +63,8 @@ export function CalendarIntegrationFlow() {
         description: "There was an error syncing with Google Calendar.",
         variant: "destructive",
       });
+    } finally {
+      setIsSyncing(false);
     }
   };
 

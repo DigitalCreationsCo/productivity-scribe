@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from "@/contexts/AuthContext";
+import { AppProvider } from "@/contexts/AppContext";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Journal from "./pages/Journal";
@@ -29,20 +30,22 @@ const App = () => (
       <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
         <BrowserRouter>
           <AuthProvider>
-            <SidebarProvider>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/calendar-integration" element={<CalendarIntegration />} />
-                <Route element={<AppLayout />}>
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/journal" element={<Journal />} />
-                  <Route path="/tasks" element={<Tasks />} />
-                  <Route path="/habits" element={<Habits />} />
-                  <Route path="/settings" element={<Settings />} />
-                </Route>
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </SidebarProvider>
+            <AppProvider>
+              <SidebarProvider>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/calendar-integration" element={<CalendarIntegration />} />
+                  <Route element={<AppLayout />}>
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/journal" element={<Journal />} />
+                    <Route path="/tasks" element={<Tasks />} />
+                    <Route path="/habits" element={<Habits />} />
+                    <Route path="/settings" element={<Settings />} />
+                  </Route>
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </SidebarProvider>
+            </AppProvider>
           </AuthProvider>
         </BrowserRouter>
       </GoogleOAuthProvider>

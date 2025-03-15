@@ -2,15 +2,36 @@
 import React from 'react';
 import { useCalendarEvents } from '@/services/googleCalendar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, RefreshCcw, ArrowRight } from 'lucide-react';
+import { Calendar, RefreshCcw, ArrowRight, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format, parseISO } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
+import { useApp } from '@/contexts/AppContext';
 import { Link } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
 
 export function CalendarEvents() {
   const { hasCalendarAccess, isAuthenticated } = useAuth();
-  const { data: events, isLoading, isError, refetch } = useCalendarEvents();
+  const { calendarEvents, lastSyncDate, isSyncing } = useApp();
+  const { refetch } = useCalendarEvents();
+
+  const handleRefresh = async () => {
+    if (isSyncing) return;
+    
+    try {
+      await refetch();
+      toast({
+        title: "Calendar Refreshed",
+        description: "Your calendar events have been updated."
+      });
+    } catch (error) {
+      toast({
+        title: "Refresh Failed",
+        description: "Failed to refresh calendar events.",
+        variant: "destructive"
+      });
+    }
+  };
 
   if (!isAuthenticated) {
     return (
@@ -73,38 +94,41 @@ export function CalendarEvents() {
             Upcoming Events
           </CardTitle>
           <CardDescription>
-            Your upcoming calendar events
+            {lastSyncDate ? (
+              <span className="flex items-center gap-1">
+                <Clock className="h-3 w-3" /> Last synced: {format(lastSyncDate, 'MMM d, h:mm a')}
+              </span>
+            ) : (
+              "Your upcoming calendar events"
+            )}
           </CardDescription>
         </div>
         <Button 
           variant="ghost" 
           size="icon" 
-          onClick={() => refetch()} 
-          disabled={isLoading}
+          onClick={handleRefresh} 
+          disabled={isSyncing}
         >
-          <RefreshCcw className="h-4 w-4" />
+          <RefreshCcw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
         </Button>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
+        {isSyncing ? (
           <div className="flex justify-center py-6">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
-        ) : isError ? (
+        ) : calendarEvents.length === 0 ? (
           <div className="text-center py-6 text-muted-foreground">
-            <p>Failed to load calendar events</p>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="mt-2" 
-              onClick={() => refetch()}
-            >
-              Try again
-            </Button>
+            <p>No upcoming events</p>
+            <Link to="/calendar-integration" className="block mt-4">
+              <Button variant="outline" size="sm">
+                Reconfigure Calendar
+              </Button>
+            </Link>
           </div>
-        ) : events && events.length > 0 ? (
+        ) : (
           <div className="space-y-4">
-            {events.slice(0, 5).map((event) => (
+            {calendarEvents.slice(0, 5).map((event) => (
               <div key={event.id} className="border-b pb-3 last:border-0">
                 <h3 className="font-medium">{event.summary}</h3>
                 <div className="flex items-center mt-1 text-sm text-muted-foreground">
@@ -120,22 +144,13 @@ export function CalendarEvents() {
               </div>
             ))}
             
-            {events.length > 5 && (
+            {calendarEvents.length > 5 && (
               <div className="text-center">
                 <Button variant="link" size="sm">
                   View all events
                 </Button>
               </div>
             )}
-          </div>
-        ) : (
-          <div className="text-center py-6 text-muted-foreground">
-            <p>No upcoming events</p>
-            <Link to="/calendar-integration" className="block mt-4">
-              <Button variant="outline" size="sm">
-                Reconfigure Calendar
-              </Button>
-            </Link>
           </div>
         )}
       </CardContent>

@@ -3,9 +3,11 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { GoogleAuth } from '@/components/auth/GoogleAuth';
 import { CalendarIntegrationFlow } from '@/components/calendar/CalendarIntegrationFlow';
+import { useApp } from '@/contexts/AppContext';
 
 const CalendarIntegration = () => {
   const { isAuthenticated } = useAuth();
+  const { lastSyncDate } = useApp();
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50 dark:bg-gray-900">
@@ -15,6 +17,11 @@ const CalendarIntegration = () => {
           <p className="text-muted-foreground">
             Integrate your Google Calendar to keep track of all your events
           </p>
+          {lastSyncDate && (
+            <p className="text-sm text-muted-foreground mt-2">
+              Last synced: {lastSyncDate.toLocaleString()}
+            </p>
+          )}
         </div>
         
         {!isAuthenticated ? (

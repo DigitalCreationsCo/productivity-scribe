@@ -1,6 +1,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
+import { useApp } from '@/contexts/AppContext';
 
 // Types
 export interface CalendarEvent {
@@ -99,23 +100,45 @@ const createCalendarEvent = async (
 // Hooks
 export function useCalendarEvents(dateRange?: DateRange) {
   const { user, hasCalendarAccess } = useAuth();
+  const { setCalendarEvents, setLastSyncDate, setIsSyncing } = useApp();
+  const queryClient = useQueryClient();
   
   return useQuery({
     queryKey: ['calendarEvents', dateRange?.startDate, dateRange?.endDate],
-    queryFn: () => fetchCalendarEvents(user?.accessToken || '', dateRange),
+    queryFn: async () => {
+      setIsSyncing(true);
+      try {
+        const events = await fetchCalendarEvents(user?.accessToken || '', dateRange);
+        setCalendarEvents(events);
+        setLastSyncDate(new Date());
+        return events;
+      } finally {
+        setIsSyncing(false);
+      }
+    },
     enabled: !!user?.accessToken && hasCalendarAccess,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true,
+    onError: () => {
+      setIsSyncing(false);
+    },
   });
 }
 
 export function useCreateEvent() {
   const { user } = useAuth();
+  const { calendarEvents, setCalendarEvents } = useApp();
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (event: Omit<CalendarEvent, 'id'>) => 
-      createCalendarEvent(user?.accessToken || '', event),
+    mutationFn: async (event: Omit<CalendarEvent, 'id'>) => {
+      const newEvent = await createCalendarEvent(user?.accessToken || '', event);
+      
+      // Update the global calendar events state
+      setCalendarEvents([...calendarEvents, newEvent]);
+      
+      return newEvent;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['calendarEvents'] });
     },
@@ -124,6 +147,7 @@ export function useCreateEvent() {
 
 export function useSyncCalendarEvents() {
   const { user, hasCalendarAccess } = useAuth();
+  const { setIsSyncing } = useApp();
   const queryClient = useQueryClient();
 
   const fetchEventsInRange = async (dateRange: DateRange) => {
@@ -131,16 +155,21 @@ export function useSyncCalendarEvents() {
       throw new Error('No access token or calendar access');
     }
     
-    // Clear existing cached calendar data
-    queryClient.removeQueries({ queryKey: ['calendarEvents'] });
-    
-    // Fetch events in the specified date range
-    const events = await fetchCalendarEvents(user.accessToken, dateRange);
-    
-    // Update the cache
-    queryClient.setQueryData(['calendarEvents', dateRange.startDate, dateRange.endDate], events);
-    
-    return events;
+    setIsSyncing(true);
+    try {
+      // Clear existing cached calendar data
+      queryClient.removeQueries({ queryKey: ['calendarEvents'] });
+      
+      // Fetch events in the specified date range
+      const events = await fetchCalendarEvents(user.accessToken, dateRange);
+      
+      // Update the cache
+      queryClient.setQueryData(['calendarEvents', dateRange.startDate, dateRange.endDate], events);
+      
+      return events;
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   return useMutation({
