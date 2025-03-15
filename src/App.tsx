@@ -17,7 +17,8 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import AppLayout from "./components/layout/AppLayout";
 
 const queryClient = new QueryClient();
-const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID"; // Replace with your actual Google Client ID
+// Replace this with your actual Google Client ID from the Google Cloud Console
+const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID"; 
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

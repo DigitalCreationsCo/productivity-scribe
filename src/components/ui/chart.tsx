@@ -40,11 +40,12 @@ interface ChartProps {
   data: ChartData;
   options?: ChartOptions;
   className?: string;
+  height?: number | string;
 }
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088fe'];
 
-export const BarChart = ({ data, options, className }: ChartProps) => {
+export const BarChart = ({ data, options, className, height }: ChartProps) => {
   // Transform the data format from Chart.js-like to Recharts format
   const transformedData = data.labels.map((label, index) => {
     const dataPoint: { [key: string]: string | number } = { name: label };
@@ -58,7 +59,7 @@ export const BarChart = ({ data, options, className }: ChartProps) => {
   });
 
   return (
-    <div className={`w-full h-full ${className || ''}`}>
+    <div className={`w-full h-full ${className || ''}`} style={{ height: height || 300 }}>
       <ResponsiveContainer width="100%" height="100%">
         <RechartsBarChart
           data={transformedData}
@@ -84,7 +85,7 @@ export const BarChart = ({ data, options, className }: ChartProps) => {
   );
 };
 
-export const LineChart = ({ data, options, className }: ChartProps) => {
+export const LineChart = ({ data, options, className, height }: ChartProps) => {
   // Transform the data format from Chart.js-like to Recharts format
   const transformedData = data.labels.map((label, index) => {
     const dataPoint: { [key: string]: string | number } = { name: label };
@@ -98,7 +99,7 @@ export const LineChart = ({ data, options, className }: ChartProps) => {
   });
 
   return (
-    <div className={`w-full h-full ${className || ''}`}>
+    <div className={`w-full h-full ${className || ''}`} style={{ height: height || 300 }}>
       <ResponsiveContainer width="100%" height="100%">
         <RechartsLineChart
           data={transformedData}
@@ -133,7 +134,7 @@ export const LineChart = ({ data, options, className }: ChartProps) => {
   );
 };
 
-export const PieChart = ({ data, options, className }: ChartProps) => {
+export const PieChart = ({ data, options, className, height }: ChartProps) => {
   // Since Pie charts typically have only one dataset
   const dataset = data.datasets[0];
   const pieData = data.labels.map((label, index) => ({
@@ -142,7 +143,7 @@ export const PieChart = ({ data, options, className }: ChartProps) => {
   }));
 
   return (
-    <div className={`w-full h-full ${className || ''}`}>
+    <div className={`w-full h-full ${className || ''}`} style={{ height: height || 300 }}>
       <ResponsiveContainer width="100%" height="100%">
         <RechartsPieChart>
           <Pie
