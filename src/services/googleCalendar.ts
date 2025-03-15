@@ -119,8 +119,12 @@ export function useCalendarEvents(dateRange?: DateRange) {
     enabled: !!user?.accessToken && hasCalendarAccess,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true,
-    onError: () => {
+    // Replace onError with onSettled to handle errors
+    onSettled: (data, error) => {
       setIsSyncing(false);
+      if (error) {
+        console.error('Calendar events fetch error:', error);
+      }
     },
   });
 }
