@@ -6,10 +6,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { Calendar, Search, Plus, Clock, Edit2, Trash2, BookOpen, PenTool } from "lucide-react";
+import { Calendar, Search, Plus, Clock, BookOpen, PenTool } from "lucide-react";
 import JournalEntry from "@/components/journal/JournalEntry";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useJournalEntries, useCreateJournalEntry } from "@/services/journalService";
 
 const Journal = () => {
   const { toast } = useToast();
@@ -18,87 +19,72 @@ const Journal = () => {
   const [journalTitle, setJournalTitle] = useState("");
   const [journalContent, setJournalContent] = useState("");
   const [journalMood, setJournalMood] = useState("");
-
-  // Sample journal entries data
-  const sampleEntries = [
-    {
-      id: 1,
-      title: "Project Kickoff Meeting",
-      content: "Had a productive kickoff meeting for the new project. The team is aligned on goals and timelines. Need to follow up with the design team about initial mockups by next week.",
-      date: "May 16, 2023",
-      time: "9:30 AM",
-      mood: "Energetic",
-      moodColor: "bg-green-100 text-green-800",
-      tags: ["Work", "Meeting", "Planning"],
-    },
-    {
-      id: 2,
-      title: "Mid-week Reflection",
-      content: "Reflecting on my work-life balance this week. I've been more productive in the mornings, but need to better manage email time in the afternoons. Going to try time-blocking technique tomorrow.",
-      date: "May 15, 2023",
-      time: "6:15 PM",
-      mood: "Thoughtful",
-      moodColor: "bg-blue-100 text-blue-800",
-      tags: ["Reflection", "Productivity", "Balance"],
-    },
-    {
-      id: 3,
-      title: "Learning Session: React Hooks",
-      content: "Spent two hours learning about React custom hooks. Building a small project to practice implementation. Need to review useCallback and useMemo concepts again tomorrow.",
-      date: "May 14, 2023",
-      time: "2:45 PM",
-      mood: "Focused",
-      moodColor: "bg-purple-100 text-purple-800",
-      tags: ["Learning", "Development", "React"],
-    },
-    {
-      id: 4,
-      title: "Weekend Planning",
-      content: "Planning activities for the weekend. Want to balance relaxation with some productive hobby time. Considering a hiking trip on Saturday morning.",
-      date: "May 12, 2023",
-      time: "5:20 PM",
-      mood: "Hopeful",
-      moodColor: "bg-yellow-100 text-yellow-800",
-      tags: ["Planning", "Personal", "Weekend"],
-    },
-    {
-      id: 5,
-      title: "Client Project Review",
-      content: "Reviewed feedback from the client on our latest deliverable. Overall positive with some minor revision requests. Need to schedule a team meeting to discuss implementation.",
-      date: "May 10, 2023",
-      time: "11:10 AM",
-      mood: "Satisfied",
-      moodColor: "bg-blue-100 text-blue-800",
-      tags: ["Work", "Client", "Feedback"],
-    },
-  ];
+  const [journalTags, setJournalTags] = useState<string[]>([]);
+  
+  // Query and mutations
+  const { data: journalEntries = [], isLoading } = useJournalEntries();
+  const createEntryMutation = useCreateJournalEntry();
 
   const handleNewJournalEntry = () => {
-    if (!journalTitle || !journalContent) {
+    if (!journalTitle || !journalContent || !journalMood) {
       toast({
         title: "Missing information",
-        description: "Please provide both title and content for your journal entry.",
+        description: "Please provide title, content, and mood for your journal entry.",
         variant: "destructive",
       });
       return;
     }
 
-    // In a real app, we would save this to a database
-    toast({
-      title: "Journal entry saved",
-      description: "Your thoughts have been recorded successfully.",
-    });
-
-    // Reset form after saving
-    setJournalTitle("");
-    setJournalContent("");
-    setJournalMood("");
-    
-    // Switch to entries tab to see the new entry
-    setActiveTab("entries");
+    createEntryMutation.mutate(
+      {
+        title: journalTitle,
+        content: journalContent,
+        mood: journalMood,
+        tags: journalTags,
+      },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Journal entry saved",
+            description: "Your thoughts have been recorded successfully.",
+          });
+          
+          // Reset form after saving
+          setJournalTitle("");
+          setJournalContent("");
+          setJournalMood("");
+          setJournalTags([]);
+          
+          // Switch to entries tab to see the new entry
+          setActiveTab("entries");
+        },
+        onError: () => {
+          toast({
+            title: "Error saving entry",
+            description: "There was a problem saving your journal entry. Please try again.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
   };
 
-  const filteredEntries = sampleEntries.filter(entry => 
+  const handleTagInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+      e.preventDefault();
+      const newTag = e.currentTarget.value.trim();
+      if (!journalTags.includes(newTag)) {
+        setJournalTags([...journalTags, newTag]);
+      }
+      e.currentTarget.value = '';
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setJournalTags(journalTags.filter(tag => tag !== tagToRemove));
+  };
+
+  const filteredEntries = journalEntries.filter(entry => 
     entry.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
     entry.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
     entry.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -143,7 +129,7 @@ const Journal = () => {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                   <CardTitle>All Journal Entries</CardTitle>
-                  <CardDescription>You have {sampleEntries.length} entries in total</CardDescription>
+                  <CardDescription>You have {journalEntries.length} entries in total</CardDescription>
                 </div>
                 <div className="relative w-full sm:w-auto">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -157,23 +143,29 @@ const Journal = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {filteredEntries.length > 0 ? (
-                  filteredEntries.map((entry) => (
-                    <JournalEntry key={entry.id} entry={entry} />
-                  ))
-                ) : (
-                  <div className="text-center py-10">
-                    <BookOpen className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No entries found</h3>
-                    <p className="text-muted-foreground">
-                      {searchQuery 
-                        ? "Try adjusting your search query" 
-                        : "Start by creating your first journal entry"}
-                    </p>
-                  </div>
-                )}
-              </div>
+              {isLoading ? (
+                <div className="flex justify-center py-10">
+                  <div className="animate-spin h-8 w-8 border-4 border-journal-blue border-t-transparent rounded-full"></div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredEntries.length > 0 ? (
+                    filteredEntries.map((entry) => (
+                      <JournalEntry key={entry.id} entry={entry} />
+                    ))
+                  ) : (
+                    <div className="text-center py-10">
+                      <BookOpen className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-medium mb-2">No entries found</h3>
+                      <p className="text-muted-foreground">
+                        {searchQuery 
+                          ? "Try adjusting your search query" 
+                          : "Start by creating your first journal entry"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -243,6 +235,31 @@ const Journal = () => {
                   </div>
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="tags">Tags (press Enter to add)</Label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {journalTags.map((tag, index) => (
+                    <span 
+                      key={index} 
+                      className="bg-gray-100 px-2 py-1 rounded-full text-sm flex items-center group"
+                    >
+                      {tag}
+                      <button 
+                        className="ml-1 text-gray-500 hover:text-red-500"
+                        onClick={() => removeTag(tag)}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <Input 
+                  id="tags" 
+                  placeholder="Add tags and press Enter" 
+                  onKeyDown={handleTagInput}
+                />
+              </div>
               
               <div className="pt-4 flex justify-end space-x-2">
                 <Button variant="outline" onClick={() => setActiveTab("entries")}>
@@ -251,8 +268,16 @@ const Journal = () => {
                 <Button 
                   className="bg-journal-blue hover:bg-journal-blue/90"
                   onClick={handleNewJournalEntry}
+                  disabled={createEntryMutation.isPending}
                 >
-                  Save Journal Entry
+                  {createEntryMutation.isPending ? (
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Journal Entry'
+                  )}
                 </Button>
               </div>
             </CardContent>
