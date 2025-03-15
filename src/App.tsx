@@ -15,6 +15,7 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import AppLayout from "./components/layout/AppLayout";
+import CalendarIntegration from "./pages/CalendarIntegration";
 
 const queryClient = new QueryClient();
 // Using the provided Google Client ID
@@ -31,6 +32,7 @@ const App = () => (
             <SidebarProvider>
               <Routes>
                 <Route path="/" element={<Index />} />
+                <Route path="/calendar-integration" element={<CalendarIntegration />} />
                 <Route element={<AppLayout />}>
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/journal" element={<Journal />} />

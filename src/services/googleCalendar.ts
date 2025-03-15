@@ -18,17 +18,32 @@ export interface CalendarEvent {
   location?: string;
 }
 
+export interface DateRange {
+  startDate: Date;
+  endDate: Date;
+}
+
 // API Functions
-const fetchCalendarEvents = async (accessToken: string): Promise<CalendarEvent[]> => {
+const fetchCalendarEvents = async (
+  accessToken: string, 
+  dateRange?: DateRange
+): Promise<CalendarEvent[]> => {
   if (!accessToken) {
     throw new Error('No access token available');
   }
 
-  const timeMin = new Date();
-  timeMin.setDate(timeMin.getDate() - 7); // 1 week ago
+  let timeMin, timeMax;
   
-  const timeMax = new Date();
-  timeMax.setDate(timeMax.getDate() + 30); // 30 days from now
+  if (dateRange) {
+    timeMin = dateRange.startDate;
+    timeMax = dateRange.endDate;
+  } else {
+    timeMin = new Date();
+    timeMin.setDate(timeMin.getDate() - 7); // 1 week ago
+    
+    timeMax = new Date();
+    timeMax.setDate(timeMax.getDate() + 30); // 30 days from now
+  }
 
   const params = new URLSearchParams({
     timeMin: timeMin.toISOString(),
@@ -82,12 +97,12 @@ const createCalendarEvent = async (
 };
 
 // Hooks
-export function useCalendarEvents() {
+export function useCalendarEvents(dateRange?: DateRange) {
   const { user, hasCalendarAccess } = useAuth();
   
   return useQuery({
-    queryKey: ['calendarEvents'],
-    queryFn: () => fetchCalendarEvents(user?.accessToken || ''),
+    queryKey: ['calendarEvents', dateRange?.startDate, dateRange?.endDate],
+    queryFn: () => fetchCalendarEvents(user?.accessToken || '', dateRange),
     enabled: !!user?.accessToken && hasCalendarAccess,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true,
@@ -102,6 +117,36 @@ export function useCreateEvent() {
     mutationFn: (event: Omit<CalendarEvent, 'id'>) => 
       createCalendarEvent(user?.accessToken || '', event),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['calendarEvents'] });
+    },
+  });
+}
+
+export function useSyncCalendarEvents() {
+  const { user, hasCalendarAccess } = useAuth();
+  const queryClient = useQueryClient();
+
+  const fetchEventsInRange = async (dateRange: DateRange) => {
+    if (!user?.accessToken || !hasCalendarAccess) {
+      throw new Error('No access token or calendar access');
+    }
+    
+    // Clear existing cached calendar data
+    queryClient.removeQueries({ queryKey: ['calendarEvents'] });
+    
+    // Fetch events in the specified date range
+    const events = await fetchCalendarEvents(user.accessToken, dateRange);
+    
+    // Update the cache
+    queryClient.setQueryData(['calendarEvents', dateRange.startDate, dateRange.endDate], events);
+    
+    return events;
+  };
+
+  return useMutation({
+    mutationFn: fetchEventsInRange,
+    onSuccess: () => {
+      // After successful synchronization
       queryClient.invalidateQueries({ queryKey: ['calendarEvents'] });
     },
   });

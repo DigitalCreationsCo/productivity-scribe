@@ -6,7 +6,8 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useAuth } from '@/contexts/AuthContext';
 import { GoogleAuth } from '@/components/auth/GoogleAuth';
-import { Calendar, LogOut, Settings as SettingsIcon, User } from 'lucide-react';
+import { Calendar, LogOut, Settings as SettingsIcon, User, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Settings = () => {
   const { user, isAuthenticated, logout, hasCalendarAccess, setCalendarAccess } = useAuth();
@@ -79,18 +80,31 @@ const Settings = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             {isAuthenticated ? (
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Enable Google Calendar</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Sync your tasks and events with Google Calendar
-                  </p>
+              <>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Enable Google Calendar</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Sync your tasks and events with Google Calendar
+                    </p>
+                  </div>
+                  <Switch 
+                    checked={hasCalendarAccess}
+                    onCheckedChange={setCalendarAccess}
+                  />
                 </div>
-                <Switch 
-                  checked={hasCalendarAccess}
-                  onCheckedChange={setCalendarAccess}
-                />
-              </div>
+                
+                {hasCalendarAccess && (
+                  <div className="pt-4">
+                    <Link to="/calendar-integration">
+                      <Button variant="outline" className="w-full">
+                        Reconfigure Calendar Integration
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+              </>
             ) : (
               <p className="text-sm text-muted-foreground">
                 Sign in with Google to enable calendar integration
