@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,7 @@ const Tasks = () => {
   const { toast } = useToast();
   const { isAuthenticated, hasCalendarAccess } = useAuth();
   const { isSyncing } = useApp();
-  const { refetch: refetchEvents } = useCalendarEvents();
+  const { data: events = [], refetch: refetchEvents } = useCalendarEvents();
   const [activeTab, setActiveTab] = useState("all");
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
@@ -30,10 +30,28 @@ const Tasks = () => {
   const [filterPriority, setFilterPriority] = useState("all");
 
   // Use our custom hooks
-  const { data: tasks = [], isLoading } = useTasks();
+  const { data: tasks = [], isLoading, refetch: refetchTasks } = useTasks();
   const addTaskMutation = useAddTask();
   const toggleTaskMutation = useToggleTask();
   const deleteTaskMutation = useDeleteTask();
+
+  // Ensure we refetch tasks when events change
+  useEffect(() => {
+    if (events.length > 0) {
+      // Short delay to ensure events are processed
+      const timer = setTimeout(() => {
+        refetchTasks();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [events, refetchTasks]);
+
+  // Initial load of calendar events and tasks
+  useEffect(() => {
+    if (hasCalendarAccess && !isSyncing) {
+      refetchEvents();
+    }
+  }, [hasCalendarAccess, refetchEvents, isSyncing]);
 
   const handleToggleTask = (taskId: string) => {
     toggleTaskMutation.mutate(taskId);
@@ -86,6 +104,8 @@ const Tasks = () => {
     
     try {
       await refetchEvents();
+      // Explicitly refetch tasks after calendar events
+      setTimeout(() => refetchTasks(), 500);
       toast({
         title: "Calendar Refreshed",
         description: "Your calendar events have been updated."

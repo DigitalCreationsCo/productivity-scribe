@@ -102,17 +102,23 @@ export const createCalendarEvent = async (
 export function useCalendarEvents(dateRange?: DateRange) {
   const { user, hasCalendarAccess } = useAuth();
   const { setCalendarEvents, setLastSyncDate, setIsSyncing } = useApp();
-  const queryClient = useQueryClient();
   
   return useQuery({
     queryKey: ['calendarEvents', dateRange?.startDate, dateRange?.endDate],
     queryFn: async () => {
       setIsSyncing(true);
       try {
-        const events = await fetchCalendarEvents(user?.accessToken || '', dateRange);
+        if (!user?.accessToken || !hasCalendarAccess) {
+          return [];
+        }
+        
+        const events = await fetchCalendarEvents(user.accessToken, dateRange);
         setCalendarEvents(events);
         setLastSyncDate(new Date());
         return events;
+      } catch (error) {
+        console.error('Error fetching calendar events:', error);
+        return [];
       } finally {
         setIsSyncing(false);
       }
@@ -120,7 +126,8 @@ export function useCalendarEvents(dateRange?: DateRange) {
     enabled: !!user?.accessToken && hasCalendarAccess,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true,
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes,
+    initialData: [] // Provide empty array as initial data
   });
 }
 

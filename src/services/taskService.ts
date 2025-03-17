@@ -46,6 +46,15 @@ const convertEventsToTasks = (calendarEvents: any[]): Task[] => {
   }));
 };
 
+// Generate UUID compatible with TypeScript
+const generateUUID = (): string => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 // Hooks for tasks
 export function useTasks() {
   const { calendarEvents } = useApp();
@@ -82,6 +91,9 @@ export function useTasks() {
       
       return localTasks;
     },
+    // Make sure to refetch when calendarEvents change
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -92,7 +104,7 @@ export function useAddTask() {
   return useMutation({
     mutationFn: async (newTask: Omit<Task, 'id'>) => {
       const task = {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         ...newTask
       };
       
