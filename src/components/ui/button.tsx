@@ -44,13 +44,13 @@ export interface ButtonProps
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, to, ...props }, ref) => {
-    const Comp = asChild ? Slot : to ? "div" : "button"
+    const Comp = asChild ? Slot : "button"
     
     // If a 'to' prop is provided, wrap the button in a Link component
     if (to) {
       return (
         <Link to={to} className="w-auto inline-flex">
-          <Comp
+          <button
             className={cn(buttonVariants({ variant, size, className }))}
             ref={ref}
             {...props}
