@@ -70,7 +70,8 @@ const fetchCalendarEvents = async (
   return data.items as CalendarEvent[];
 };
 
-const createCalendarEvent = async (
+// Export this function so it can be used directly in taskService
+export const createCalendarEvent = async (
   accessToken: string,
   event: Omit<CalendarEvent, 'id'>
 ): Promise<CalendarEvent> => {

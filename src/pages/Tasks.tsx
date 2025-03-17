@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Calendar, Plus, CheckSquare, Square, Filter, Clock, AlertCircle, Trash2, RefreshCcw } from "lucide-react";
@@ -53,12 +53,21 @@ const Tasks = () => {
       return;
     }
 
+    if (!dueDate) {
+      toast({
+        title: "Due date required",
+        description: "Please select a due date for your task.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const newTask: Omit<Task, 'id'> = {
       title: taskTitle,
       description: taskDescription,
       completed: false,
       priority: taskPriority || "medium",
-      dueDate: dueDate ? dueDate.toISOString() : new Date().toISOString(),
+      dueDate: dueDate.toISOString(),
       category: "work", // Default category
       isFromCalendar: false
     };
@@ -147,7 +156,7 @@ const Tasks = () => {
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
             <span>
-              Your tasks include events from Google Calendar. 
+              Your tasks include events from Google Calendar. New tasks will also be added to your Google Calendar.
               {tasks.filter(t => t.isFromCalendar).length > 0 && (
                 <span className="font-medium"> ({tasks.filter(t => t.isFromCalendar).length} calendar events)</span>
               )}
@@ -160,7 +169,7 @@ const Tasks = () => {
         <div className="rounded-lg border bg-muted/50 p-3 text-sm">
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span>Connect your Google Calendar to view events as tasks. </span>
+            <span>Connect your Google Calendar to view events as tasks and create tasks in your calendar. </span>
             <Link to="/calendar-integration" className="text-primary underline">
               Connect Calendar
             </Link>

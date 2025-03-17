@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { createCalendarEvent } from '@/services/googleCalendar';
 
 export interface Task {
   id: string;
@@ -86,26 +87,68 @@ export function useTasks() {
 
 export function useAddTask() {
   const queryClient = useQueryClient();
+  const { user, hasCalendarAccess } = useAuth();
   
   return useMutation({
-    mutationFn: (newTask: Omit<Task, 'id'>) => {
-      const tasks = getLocalTasks();
+    mutationFn: async (newTask: Omit<Task, 'id'>) => {
       const task = {
         id: crypto.randomUUID(),
         ...newTask
       };
       
+      // If we have calendar access, add the task to Google Calendar
+      if (hasCalendarAccess && user?.accessToken && !newTask.isFromCalendar) {
+        try {
+          // Create a calendar event from the task
+          const calendarEvent = {
+            summary: task.title,
+            description: task.description || '',
+            start: {
+              dateTime: new Date(task.dueDate).toISOString(),
+              timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+            },
+            end: {
+              dateTime: new Date(new Date(task.dueDate).getTime() + 60 * 60 * 1000).toISOString(), // Add 1 hour
+              timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+            }
+          };
+          
+          // Create the event in Google Calendar
+          const createdEvent = await createCalendarEvent(user.accessToken, calendarEvent);
+          
+          // Update the task with the Google Calendar event ID
+          task.id = createdEvent.id;
+          task.isFromCalendar = true;
+        } catch (error) {
+          console.error('Failed to create Google Calendar event:', error);
+          // Continue with local task creation even if calendar fails
+        }
+      }
+      
+      // Add to local storage regardless
+      const tasks = getLocalTasks();
       const updatedTasks = [task, ...tasks];
       saveLocalTasks(updatedTasks);
+      
       return task;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['calendarEvents'] });
+      
       toast({
         title: "Task Added",
         description: "Your task has been added successfully."
       });
     },
+    onError: (error) => {
+      console.error('Error adding task:', error);
+      toast({
+        title: "Failed to Add Task",
+        description: "There was an error adding your task. Please try again.",
+        variant: "destructive"
+      });
+    }
   });
 }
 
@@ -113,7 +156,7 @@ export function useToggleTask() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (taskId: string) => {
+    mutationFn: async (taskId: string) => {
       const tasks = getLocalTasks();
       const updatedTasks = tasks.map(task => 
         task.id === taskId ? { ...task, completed: !task.completed } : task
@@ -138,7 +181,7 @@ export function useDeleteTask() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (taskId: string) => {
+    mutationFn: async (taskId: string) => {
       const tasks = getLocalTasks();
       const updatedTasks = tasks.filter(task => task.id !== taskId);
       saveLocalTasks(updatedTasks);
