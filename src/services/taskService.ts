@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { createCalendarEvent } from '@/services/googleCalendar';
+import { createCalendarEvent, updateCalendarEvent } from '@/services/googleCalendar';
 
 export interface Task {
   id: string;
@@ -38,7 +38,8 @@ const convertEventsToTasks = (calendarEvents: any[]): Task[] => {
     id: event.id,
     title: event.summary,
     description: event.description || '',
-    completed: false, // Calendar events are considered incomplete by default
+    // Check if colorId is 8 (which we'll use to indicate completed)
+    completed: event.colorId === '8',
     priority: 'medium', // Default priority
     dueDate: event.end.dateTime,
     category: 'calendar',
@@ -56,13 +57,12 @@ const generateUUID = (): string => {
 };
 
 // Hooks for tasks
-export function useTasks() {
+export function useTasks(dateFilter?: Date) {
   const { calendarEvents } = useApp();
   const { hasCalendarAccess } = useAuth();
-  const queryClient = useQueryClient();
   
   return useQuery({
-    queryKey: ['tasks'],
+    queryKey: ['tasks', dateFilter?.toISOString()],
     queryFn: () => {
       const localTasks = getLocalTasks();
       
@@ -86,7 +86,27 @@ export function useTasks() {
           task => !task.isFromCalendar
         );
         
-        return [...nonCalendarTasks, ...mergedTasks];
+        let allTasks = [...nonCalendarTasks, ...mergedTasks];
+        
+        // Apply date filter if provided
+        if (dateFilter) {
+          const dateFilterStr = dateFilter.toDateString();
+          allTasks = allTasks.filter(task => {
+            const taskDate = new Date(task.dueDate);
+            return taskDate.toDateString() === dateFilterStr;
+          });
+        }
+        
+        return allTasks;
+      }
+      
+      // Apply date filter to local tasks if provided
+      if (dateFilter) {
+        const dateFilterStr = dateFilter.toDateString();
+        return localTasks.filter(task => {
+          const taskDate = new Date(task.dueDate);
+          return taskDate.toDateString() === dateFilterStr;
+        });
       }
       
       return localTasks;
@@ -166,12 +186,38 @@ export function useAddTask() {
 
 export function useToggleTask() {
   const queryClient = useQueryClient();
+  const { user, hasCalendarAccess } = useAuth();
   
   return useMutation({
     mutationFn: async (taskId: string) => {
+      // Get the current task
       const tasks = getLocalTasks();
+      const taskToToggle = tasks.find(task => task.id === taskId);
+      
+      if (!taskToToggle) {
+        throw new Error('Task not found');
+      }
+      
+      // Toggle completion status
+      const newCompletionStatus = !taskToToggle.completed;
+      
+      // Update in Google Calendar if task is from calendar
+      if (taskToToggle.isFromCalendar && hasCalendarAccess && user?.accessToken) {
+        try {
+          // Update the event in Google Calendar
+          // We use colorId 8 (graphite) to mark completed tasks
+          await updateCalendarEvent(user.accessToken, taskId, {
+            colorId: newCompletionStatus ? '8' : undefined
+          });
+        } catch (error) {
+          console.error('Failed to update Google Calendar event:', error);
+          // Continue with local update even if calendar update fails
+        }
+      }
+      
+      // Update locally
       const updatedTasks = tasks.map(task => 
-        task.id === taskId ? { ...task, completed: !task.completed } : task
+        task.id === taskId ? { ...task, completed: newCompletionStatus } : task
       );
       
       saveLocalTasks(updatedTasks);
@@ -179,6 +225,8 @@ export function useToggleTask() {
     },
     onSuccess: (task) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['calendarEvents'] });
+      
       if (task) {
         toast({
           title: task.completed ? "Task Completed" : "Task Reopened",

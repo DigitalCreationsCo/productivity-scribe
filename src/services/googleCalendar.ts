@@ -17,6 +17,8 @@ export interface CalendarEvent {
     timeZone?: string;
   };
   location?: string;
+  // Add colorId for visual representation of completed tasks
+  colorId?: string;
 }
 
 export interface DateRange {
@@ -98,6 +100,54 @@ export const createCalendarEvent = async (
   return response.json();
 };
 
+// Add function to update calendar events
+export const updateCalendarEvent = async (
+  accessToken: string,
+  eventId: string,
+  eventUpdates: Partial<CalendarEvent>
+): Promise<CalendarEvent> => {
+  if (!accessToken) {
+    throw new Error('No access token available');
+  }
+
+  // Fetch current event first to preserve existing data
+  const eventResponse = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!eventResponse.ok) {
+    throw new Error('Failed to fetch calendar event for update');
+  }
+
+  const currentEvent = await eventResponse.json();
+  
+  // Merge current event with updates
+  const updatedEvent = { ...currentEvent, ...eventUpdates };
+
+  const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updatedEvent),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to update calendar event');
+  }
+
+  return response.json();
+};
+
 // Hooks
 export function useCalendarEvents(dateRange?: DateRange) {
   const { user, hasCalendarAccess } = useAuth();
@@ -144,6 +194,27 @@ export function useCreateEvent() {
       setCalendarEvents([...calendarEvents, newEvent]);
       
       return newEvent;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['calendarEvents'] });
+    },
+  });
+}
+
+// Add hook for updating calendar events
+export function useUpdateEvent() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      eventId, 
+      updates 
+    }: { 
+      eventId: string; 
+      updates: Partial<CalendarEvent> 
+    }) => {
+      return await updateCalendarEvent(user?.accessToken || '', eventId, updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['calendarEvents'] });

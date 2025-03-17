@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { Calendar, Plus, CheckSquare, Square, Filter, Clock, AlertCircle, Trash2, RefreshCcw } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, CheckSquare, Square, Filter, Clock, AlertCircle, Trash2, RefreshCcw, CalendarDays } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,21 +16,33 @@ import { useApp } from "@/contexts/AppContext";
 import { useCalendarEvents } from "@/services/googleCalendar";
 import { Task, useTasks, useAddTask, useToggleTask, useDeleteTask } from "@/services/taskService";
 import { Link } from "react-router-dom";
+import { format, isSameDay } from "date-fns";
 
 const Tasks = () => {
   const { toast } = useToast();
   const { isAuthenticated, hasCalendarAccess } = useAuth();
   const { isSyncing } = useApp();
-  const { data: events = [], refetch: refetchEvents } = useCalendarEvents();
+  const [dateFilter, setDateFilter] = useState<Date>(new Date()); // Default to today
+  
+  // Create date range for calendar events query
+  const dateRange = {
+    startDate: new Date(dateFilter),
+    endDate: new Date(dateFilter)
+  };
+  
+  // Set end of day for the end date
+  dateRange.endDate.setHours(23, 59, 59, 999);
+  
+  const { data: events = [], refetch: refetchEvents } = useCalendarEvents(dateRange);
   const [activeTab, setActiveTab] = useState("all");
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
   const [taskPriority, setTaskPriority] = useState<"high" | "medium" | "low">("medium");
-  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+  const [dueDate, setDueDate] = useState<Date | undefined>(new Date()); // Default to today
   const [filterPriority, setFilterPriority] = useState("all");
 
-  // Use our custom hooks
-  const { data: tasks = [], isLoading, refetch: refetchTasks } = useTasks();
+  // Use our custom hooks with date filter
+  const { data: tasks = [], isLoading, refetch: refetchTasks } = useTasks(dateFilter);
   const addTaskMutation = useAddTask();
   const toggleTaskMutation = useToggleTask();
   const deleteTaskMutation = useDeleteTask();
@@ -51,7 +63,7 @@ const Tasks = () => {
     if (hasCalendarAccess && !isSyncing) {
       refetchEvents();
     }
-  }, [hasCalendarAccess, refetchEvents, isSyncing]);
+  }, [hasCalendarAccess, refetchEvents, isSyncing, dateFilter]);
 
   const handleToggleTask = (taskId: string) => {
     toggleTaskMutation.mutate(taskId);
@@ -96,7 +108,13 @@ const Tasks = () => {
     setTaskTitle("");
     setTaskDescription("");
     setTaskPriority("medium");
-    setDueDate(undefined);
+    setDueDate(new Date()); // Reset to today
+  };
+
+  const handleDateFilterChange = (date: Date | undefined) => {
+    if (date) {
+      setDateFilter(date);
+    }
   };
 
   const handleRefreshCalendar = async () => {
@@ -117,6 +135,11 @@ const Tasks = () => {
         variant: "destructive"
       });
     }
+  };
+
+  // Reset date filter to today
+  const handleResetDateFilter = () => {
+    setDateFilter(new Date());
   };
 
   // Filter tasks based on active tab and priority filter
@@ -147,12 +170,21 @@ const Tasks = () => {
     return new Date(dateString) < new Date() && dateString !== "";
   };
 
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return isSameDay(date, today);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold">Tasks</h1>
-          <p className="text-muted-foreground">Manage your tasks and stay productive</p>
+          <p className="text-muted-foreground">
+            {isToday(dateFilter) 
+              ? "Manage your tasks for today" 
+              : `Tasks for ${format(dateFilter, 'MMMM d, yyyy')}`}
+          </p>
         </div>
         <div className="flex gap-2">
           {hasCalendarAccess && (
@@ -171,10 +203,39 @@ const Tasks = () => {
         </div>
       </div>
 
+      {/* Date Filter */}
+      <Card className="border-dashed">
+        <CardContent className="pt-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-5 w-5 text-muted-foreground" />
+              <h3 className="text-lg font-medium">Date Filter</h3>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+              <DatePicker 
+                selectedDate={dateFilter} 
+                onDateChange={handleDateFilterChange} 
+                showTimePicker={false}
+              />
+              {!isToday(dateFilter) && (
+                <Button 
+                  variant="outline" 
+                  onClick={handleResetDateFilter}
+                  className="whitespace-nowrap"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  Today
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {hasCalendarAccess && (
         <div className="rounded-lg border bg-card p-3 text-sm text-card-foreground shadow-sm">
           <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
             <span>
               Your tasks include events from Google Calendar. New tasks will also be added to your Google Calendar.
               {tasks.filter(t => t.isFromCalendar).length > 0 && (
@@ -188,7 +249,7 @@ const Tasks = () => {
       {!hasCalendarAccess && isAuthenticated && (
         <div className="rounded-lg border bg-muted/50 p-3 text-sm">
           <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
             <span>Connect your Google Calendar to view events as tasks and create tasks in your calendar. </span>
             <Link to="/calendar-integration" className="text-primary underline">
               Connect Calendar
@@ -204,6 +265,7 @@ const Tasks = () => {
               <CardTitle>Your Tasks</CardTitle>
               <CardDescription>
                 {filteredTasks.length} {filteredTasks.length === 1 ? 'task' : 'tasks'} {activeTab === "completed" ? "completed" : activeTab === "active" ? "in progress" : "total"}
+                {!isToday(dateFilter) && ` for ${format(dateFilter, 'MMM d')}`}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -323,6 +385,7 @@ const Tasks = () => {
                       : activeTab === "active"
                       ? "You don't have any active tasks"
                       : "Add your first task to get started"}
+                    {!isToday(dateFilter) && ` for ${format(dateFilter, 'MMMM d, yyyy')}`}
                   </p>
                   <Button 
                     className="mt-4 bg-journal-green hover:bg-journal-green/90"
@@ -397,7 +460,7 @@ const Tasks = () => {
               setTaskTitle("");
               setTaskDescription("");
               setTaskPriority("medium");
-              setDueDate(undefined);
+              setDueDate(new Date()); // Reset to today
             }}>
               Clear
             </Button>
