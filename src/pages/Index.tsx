@@ -1,11 +1,8 @@
 
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
 import { BookOpen, CheckSquare, BarChart2, Calendar } from "lucide-react";
 
 const Index = () => {
-  const navigate = useNavigate();
-
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -23,7 +20,7 @@ const Index = () => {
                 <Button 
                   size="lg" 
                   className="bg-white text-journal-blue hover:bg-white/90"
-                  onClick={() => navigate("/dashboard")}
+                  to="/dashboard"
                 >
                   Get Started
                 </Button>
@@ -31,6 +28,7 @@ const Index = () => {
                   size="lg" 
                   variant="outline" 
                   className="bg-transparent border-white text-white hover:bg-white/10"
+                  to="/journal"
                 >
                   Learn More
                 </Button>
@@ -68,31 +66,37 @@ const Index = () => {
                 title: "Journal Entries",
                 description: "Capture your thoughts, ideas, and reflections with rich text formatting.",
                 icon: <BookOpen className="h-10 w-10 text-journal-blue" />,
+                link: "/journal"
               },
               {
                 title: "Task Management",
                 description: "Organize and prioritize your tasks with due dates and reminders.",
                 icon: <CheckSquare className="h-10 w-10 text-journal-green" />,
+                link: "/tasks"
               },
               {
                 title: "Habit Tracking",
                 description: "Build consistent habits and visualize your progress over time.",
                 icon: <BarChart2 className="h-10 w-10 text-journal-purple" />,
+                link: "/habits"
               },
               {
                 title: "AI Insights",
                 description: "Get personalized recommendations based on your productivity patterns.",
                 icon: <Calendar className="h-10 w-10 text-journal-pink" />,
+                link: "/dashboard"
               },
               {
                 title: "Mood Analysis",
                 description: "Track your mood and discover correlations with your activities.",
                 icon: <CheckSquare className="h-10 w-10 text-journal-blue" />,
+                link: "/journal"
               },
               {
                 title: "Progress Reports",
                 description: "Visualize your productivity journey with detailed charts and analytics.",
                 icon: <BarChart2 className="h-10 w-10 text-journal-green" />,
+                link: "/habits"
               },
             ].map((feature, index) => (
               <div 
@@ -102,6 +106,13 @@ const Index = () => {
                 <div className="mb-4">{feature.icon}</div>
                 <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
                 <p className="text-gray-600">{feature.description}</p>
+                <Button 
+                  variant="link" 
+                  className="mt-4 px-0" 
+                  to={feature.link}
+                >
+                  Learn more
+                </Button>
               </div>
             ))}
           </div>
@@ -118,7 +129,7 @@ const Index = () => {
           <Button 
             size="lg" 
             className="bg-white text-journal-blue hover:bg-white/90"
-            onClick={() => navigate("/dashboard")}
+            to="/dashboard"
           >
             Get Started Now
           </Button>
@@ -129,7 +140,7 @@ const Index = () => {
       <footer className="py-8 bg-gray-900 text-gray-400">
         <div className="container px-4 mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center mb-4 md:mb-0">
+            <div className="flex items-center mb-4 md:mb-0 cursor-pointer" onClick={() => window.location.href = '/'}>
               <Calendar className="h-6 w-6 text-journal-blue mr-2" />
               <span className="text-white font-bold">ProductiveJournal</span>
             </div>

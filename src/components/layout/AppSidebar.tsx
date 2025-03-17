@@ -31,6 +31,11 @@ const AppSidebar = () => {
   const location = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
 
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
+
   const items = [
     {
       title: "Dashboard",
@@ -62,7 +67,7 @@ const AppSidebar = () => {
   return (
     <Sidebar>
       <SidebarHeader className="p-4">
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate("/dashboard")}>
           <Calendar className="h-6 w-6 text-journal-blue" />
           <h1 className="text-xl font-bold">ProductiveJournal</h1>
         </div>
@@ -96,7 +101,7 @@ const AppSidebar = () => {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton onClick={() => navigate("/")}>
+                <SidebarMenuButton onClick={handleLogout}>
                   <LogOut className="mr-2 h-5 w-5" />
                   <span>Logout</span>
                 </SidebarMenuButton>
