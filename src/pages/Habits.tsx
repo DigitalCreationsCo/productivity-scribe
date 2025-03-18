@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,23 @@ import { BarChart2, Plus, ListChecks, Calendar, TrendingUp, Repeat, Edit2, Trash
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, LineChart } from "@/components/ui/chart";
 import { Progress } from "@/components/ui/progress";
+import { useCompletedTasks } from "@/services/taskService";
+import { createCollection, type DatabaseRecord } from "@/services/databaseService";
+
+// Habit types
+interface Habit extends DatabaseRecord {
+  id: string;
+  name: string;
+  category: string;
+  frequency: string;
+  streak: number;
+  totalCompleted: number;
+  completionHistory: number[];
+  active: boolean;
+}
+
+// Create habits collection
+const habitsCollection = createCollection<Habit>('habits');
 
 const Habits = () => {
   const { toast } = useToast();
@@ -17,64 +34,29 @@ const Habits = () => {
   const [habitName, setHabitName] = useState("");
   const [habitCategory, setHabitCategory] = useState("");
   const [habitFrequency, setHabitFrequency] = useState("");
+  const [habits, setHabits] = useState<Habit[]>([]);
+  const { data: completedTasks = [] } = useCompletedTasks();
 
-  // Sample habits data
-  const sampleHabits = [
-    {
-      id: 1,
-      name: "Daily Meditation",
-      category: "wellness",
-      frequency: "daily",
-      streak: 7,
-      totalCompleted: 28,
-      completionHistory: [1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1],
-      active: true,
-    },
-    {
-      id: 2,
-      name: "Read 30 minutes",
-      category: "learning",
-      frequency: "daily",
-      streak: 4,
-      totalCompleted: 12,
-      completionHistory: [1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1],
-      active: true,
-    },
-    {
-      id: 3,
-      name: "Exercise",
-      category: "fitness",
-      frequency: "3x weekly",
-      streak: 0,
-      totalCompleted: 8,
-      completionHistory: [0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1],
-      active: true,
-    },
-    {
-      id: 4,
-      name: "Practice Guitar",
-      category: "hobby",
-      frequency: "4x weekly",
-      streak: 0,
-      totalCompleted: 5,
-      completionHistory: [0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1],
-      active: false,
-    },
-    {
-      id: 5,
-      name: "Drink 8 glasses of water",
-      category: "health",
-      frequency: "daily",
-      streak: 2,
-      totalCompleted: 10,
-      completionHistory: [1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1],
-      active: true,
-    },
-  ];
+  // Load habits from database on mount
+  useEffect(() => {
+    const loadHabits = async () => {
+      try {
+        const savedHabits = await habitsCollection.getAll();
+        setHabits(savedHabits);
+      } catch (error) {
+        console.error('Failed to load habits:', error);
+        toast({
+          title: "Failed to load habits",
+          description: "There was an error loading your habits.",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    loadHabits();
+  }, [toast]);
 
-  const [habits, setHabits] = useState(sampleHabits);
-
-  const handleAddHabit = () => {
+  const handleAddHabit = async () => {
     if (!habitName) {
       toast({
         title: "Habit name required",
@@ -84,67 +66,118 @@ const Habits = () => {
       return;
     }
 
-    const newHabit = {
-      id: habits.length + 1,
-      name: habitName,
-      category: habitCategory || "wellness",
-      frequency: habitFrequency || "daily",
-      streak: 0,
-      totalCompleted: 0,
-      completionHistory: Array(14).fill(0),
-      active: true,
-    };
+    try {
+      const newHabit: Omit<Habit, 'id'> = {
+        name: habitName,
+        category: habitCategory || "wellness",
+        frequency: habitFrequency || "daily",
+        streak: 0,
+        totalCompleted: 0,
+        completionHistory: Array(14).fill(0),
+        active: true,
+      };
 
-    setHabits([...habits, newHabit]);
-    
-    toast({
-      title: "Habit added",
-      description: "Your new habit has been created.",
-    });
-
-    // Reset form
-    setHabitName("");
-    setHabitCategory("");
-    setHabitFrequency("");
-  };
-
-  const handleToggleHabit = (habitId: number, dayIndex: number) => {
-    setHabits(habits.map(habit => {
-      if (habit.id === habitId) {
-        const newHistory = [...habit.completionHistory];
-        newHistory[dayIndex] = newHistory[dayIndex] === 1 ? 0 : 1;
-        
-        // Calculate new streak
-        let streak = 0;
-        for (let i = newHistory.length - 1; i >= 0; i--) {
-          if (newHistory[i] === 1) {
-            streak++;
-          } else {
-            break;
-          }
-        }
-        
-        return {
-          ...habit,
-          completionHistory: newHistory,
-          streak: streak,
-          totalCompleted: newHistory.filter(day => day === 1).length
-        };
-      }
-      return habit;
-    }));
-  };
-
-  const toggleHabitActive = (habitId: number) => {
-    setHabits(habits.map(habit => 
-      habit.id === habitId ? { ...habit, active: !habit.active } : habit
-    ));
-    
-    const habit = habits.find(h => h.id === habitId);
-    if (habit) {
+      const createdHabit = await habitsCollection.create(newHabit);
+      setHabits([...habits, createdHabit]);
+      
       toast({
-        title: habit.active ? "Habit archived" : "Habit activated",
-        description: habit.name,
+        title: "Habit added",
+        description: "Your new habit has been created.",
+      });
+
+      // Reset form
+      setHabitName("");
+      setHabitCategory("");
+      setHabitFrequency("");
+    } catch (error) {
+      console.error('Failed to add habit:', error);
+      toast({
+        title: "Failed to add habit",
+        description: "There was an error adding your habit. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleToggleHabit = async (habitId: string, dayIndex: number) => {
+    try {
+      const habitToUpdate = habits.find(h => h.id === habitId);
+      if (!habitToUpdate) return;
+
+      const newHistory = [...habitToUpdate.completionHistory];
+      newHistory[dayIndex] = newHistory[dayIndex] === 1 ? 0 : 1;
+      
+      // Calculate new streak
+      let streak = 0;
+      for (let i = newHistory.length - 1; i >= 0; i--) {
+        if (newHistory[i] === 1) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+      
+      const updatedHabit = await habitsCollection.update(habitId, {
+        completionHistory: newHistory,
+        streak: streak,
+        totalCompleted: newHistory.filter(day => day === 1).length
+      });
+      
+      setHabits(habits.map(habit => 
+        habit.id === habitId ? updatedHabit : habit
+      ));
+    } catch (error) {
+      console.error('Failed to update habit:', error);
+      toast({
+        title: "Failed to update habit",
+        description: "There was an error updating your habit.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const toggleHabitActive = async (habitId: string) => {
+    try {
+      const habitToToggle = habits.find(h => h.id === habitId);
+      if (!habitToToggle) return;
+      
+      const updatedHabit = await habitsCollection.update(habitId, { 
+        active: !habitToToggle.active 
+      });
+      
+      setHabits(habits.map(habit => 
+        habit.id === habitId ? updatedHabit : habit
+      ));
+      
+      toast({
+        title: habitToToggle.active ? "Habit archived" : "Habit activated",
+        description: habitToToggle.name,
+      });
+    } catch (error) {
+      console.error('Failed to toggle habit active state:', error);
+      toast({
+        title: "Failed to update habit",
+        description: "There was an error updating your habit.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteHabit = async (habitId: string) => {
+    try {
+      await habitsCollection.delete(habitId);
+      setHabits(habits.filter(habit => habit.id !== habitId));
+      
+      toast({
+        title: "Habit deleted",
+        description: "The habit has been deleted successfully."
+      });
+    } catch (error) {
+      console.error('Failed to delete habit:', error);
+      toast({
+        title: "Failed to delete habit",
+        description: "There was an error deleting your habit.",
+        variant: "destructive"
       });
     }
   };
@@ -156,6 +189,16 @@ const Habits = () => {
     return true;
   });
 
+  // Group completed tasks by category for habit insights
+  const tasksByCategory = completedTasks.reduce((acc, task) => {
+    const category = task.category || 'uncategorized';
+    if (!acc[category]) {
+      acc[category] = 0;
+    }
+    acc[category]++;
+    return acc;
+  }, {} as Record<string, number>);
+
   // Data for overall progress chart
   const habitProgressData = {
     labels: habits.filter(h => h.active).map(h => h.name),
@@ -166,6 +209,18 @@ const Habits = () => {
           .filter(h => h.active)
           .map(h => Math.round((h.totalCompleted / h.completionHistory.length) * 100)),
         backgroundColor: "#60A5FA",
+      },
+    ],
+  };
+
+  // Data for completed tasks by category chart
+  const taskCompletionData = {
+    labels: Object.keys(tasksByCategory),
+    datasets: [
+      {
+        label: "Completed Tasks",
+        data: Object.values(tasksByCategory),
+        backgroundColor: "#8B5CF6",
       },
     ],
   };
@@ -197,7 +252,7 @@ const Habits = () => {
     health: "bg-teal-100 text-teal-800",
   };
 
-  const getCompletionRate = (habit: typeof sampleHabits[0]) => {
+  const getCompletionRate = (habit: Habit) => {
     return Math.round((habit.totalCompleted / habit.completionHistory.length) * 100);
   };
 
@@ -221,19 +276,31 @@ const Habits = () => {
           </CardHeader>
           <CardContent>
             <div className="h-80">
-              <BarChart data={habitProgressData} />
+              {habits.filter(h => h.active).length > 0 ? (
+                <BarChart data={habitProgressData} />
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  No active habits to display
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Habit Trends</CardTitle>
-            <CardDescription>Consistency over the past 14 days</CardDescription>
+            <CardTitle>Task Completion by Category</CardTitle>
+            <CardDescription>Completed tasks breakdown</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-80">
-              <LineChart data={habitTrendData} />
+              {Object.keys(tasksByCategory).length > 0 ? (
+                <BarChart data={taskCompletionData} />
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  No completed tasks to display
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -292,6 +359,14 @@ const Habits = () => {
                                 <Edit2 className="h-3 w-3 mr-1" /> Activate
                               </>
                             )}
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 text-red-500 hover:text-red-600" 
+                            onClick={() => handleDeleteHabit(habit.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
                       </div>

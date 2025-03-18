@@ -1,8 +1,9 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { createCollection, type DatabaseRecord } from './databaseService';
 
 // Types
-export interface JournalEntry {
+export interface JournalEntry extends DatabaseRecord {
   id: string;
   title: string;
   content: string;
@@ -22,56 +23,8 @@ export interface CreateJournalEntryData {
   tags?: string[];
 }
 
-// Local storage key
-const STORAGE_KEY = 'journalEntries';
-
-// Helper functions
-const getEntriesFromStorage = (): JournalEntry[] => {
-  try {
-    const entries = localStorage.getItem(STORAGE_KEY);
-    return entries ? JSON.parse(entries) : [];
-  } catch (error) {
-    console.error('Failed to parse journal entries:', error);
-    return [];
-  }
-};
-
-const saveEntriesToStorage = (entries: JournalEntry[]): void => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-};
-
-// Database operations
-const fetchJournalEntries = async (): Promise<JournalEntry[]> => {
-  // In a real app, this would be an API call
-  return getEntriesFromStorage();
-};
-
-const createJournalEntry = async (data: CreateJournalEntryData): Promise<JournalEntry> => {
-  const entries = getEntriesFromStorage();
-  
-  const newEntry: JournalEntry = {
-    id: Date.now().toString(),
-    title: data.title,
-    content: data.content,
-    date: new Date().toLocaleDateString(),
-    time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-    mood: data.mood,
-    moodColor: getMoodColor(data.mood),
-    tags: data.tags || [],
-    createdAt: new Date().toISOString(),
-  };
-  
-  const updatedEntries = [newEntry, ...entries];
-  saveEntriesToStorage(updatedEntries);
-  
-  return newEntry;
-};
-
-const deleteJournalEntry = async (id: string): Promise<void> => {
-  const entries = getEntriesFromStorage();
-  const updatedEntries = entries.filter(entry => entry.id !== id);
-  saveEntriesToStorage(updatedEntries);
-};
+// Create journal collection
+const journalCollection = createCollection<JournalEntry>('journalEntries');
 
 // Helper to determine mood color
 const getMoodColor = (mood: string): string => {
@@ -87,6 +40,30 @@ const getMoodColor = (mood: string): string => {
   };
   
   return moodColors[mood.toLowerCase()] || 'bg-gray-100 text-gray-800';
+};
+
+// Database operations
+const fetchJournalEntries = async (): Promise<JournalEntry[]> => {
+  return journalCollection.getAll();
+};
+
+const createJournalEntry = async (data: CreateJournalEntryData): Promise<JournalEntry> => {
+  const newEntry: Omit<JournalEntry, 'id'> = {
+    title: data.title,
+    content: data.content,
+    date: new Date().toLocaleDateString(),
+    time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+    mood: data.mood,
+    moodColor: getMoodColor(data.mood),
+    tags: data.tags || [],
+    createdAt: new Date().toISOString(),
+  };
+  
+  return journalCollection.create(newEntry);
+};
+
+const deleteJournalEntry = async (id: string): Promise<void> => {
+  return journalCollection.delete(id);
 };
 
 // React Query hooks

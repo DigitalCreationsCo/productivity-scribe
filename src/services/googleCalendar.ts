@@ -148,6 +148,30 @@ export const updateCalendarEvent = async (
   return response.json();
 };
 
+// Add function to delete calendar events
+export const deleteCalendarEvent = async (
+  accessToken: string,
+  eventId: string
+): Promise<void> => {
+  if (!accessToken) {
+    throw new Error('No access token available');
+  }
+
+  const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to delete calendar event');
+  }
+};
+
 // Hooks
 export function useCalendarEvents(dateRange?: DateRange) {
   const { user, hasCalendarAccess } = useAuth();
@@ -215,6 +239,22 @@ export function useUpdateEvent() {
       updates: Partial<CalendarEvent> 
     }) => {
       return await updateCalendarEvent(user?.accessToken || '', eventId, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['calendarEvents'] });
+    },
+  });
+}
+
+// Add hook for deleting calendar events
+export function useDeleteEvent() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (eventId: string) => {
+      await deleteCalendarEvent(user?.accessToken || '', eventId);
+      return eventId;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['calendarEvents'] });

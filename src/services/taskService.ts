@@ -4,8 +4,9 @@ import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { createCalendarEvent, updateCalendarEvent } from '@/services/googleCalendar';
+import { createCollection, type DatabaseRecord } from './databaseService';
 
-export interface Task {
+export interface Task extends DatabaseRecord {
   id: string;
   title: string;
   description?: string;
@@ -16,19 +17,8 @@ export interface Task {
   isFromCalendar?: boolean;
 }
 
-// Local storage tasks
-const LOCAL_STORAGE_KEY = 'tasks';
-
-// Get tasks from local storage
-const getLocalTasks = (): Task[] => {
-  const tasksJson = localStorage.getItem(LOCAL_STORAGE_KEY);
-  return tasksJson ? JSON.parse(tasksJson) : [];
-};
-
-// Save tasks to local storage
-const saveLocalTasks = (tasks: Task[]) => {
-  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(tasks));
-};
+// Create tasks collection
+const tasksCollection = createCollection<Task>('tasks');
 
 // Convert calendar events to tasks
 const convertEventsToTasks = (calendarEvents: any[]): Task[] => {
@@ -47,15 +37,6 @@ const convertEventsToTasks = (calendarEvents: any[]): Task[] => {
   }));
 };
 
-// Generate UUID compatible with TypeScript
-const generateUUID = (): string => {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
-};
-
 // Hooks for tasks
 export function useTasks(dateFilter?: Date) {
   const { calendarEvents } = useApp();
@@ -63,8 +44,8 @@ export function useTasks(dateFilter?: Date) {
   
   return useQuery({
     queryKey: ['tasks', dateFilter?.toISOString()],
-    queryFn: () => {
-      const localTasks = getLocalTasks();
+    queryFn: async () => {
+      const localTasks = await tasksCollection.getAll();
       
       // If calendar access is enabled, merge calendar events with local tasks
       if (hasCalendarAccess && calendarEvents.length > 0) {
@@ -123,8 +104,8 @@ export function useAddTask() {
   
   return useMutation({
     mutationFn: async (newTask: Omit<Task, 'id'>) => {
-      const task = {
-        id: generateUUID(),
+      let task: Task = {
+        id: '', // Will be updated below
         ...newTask
       };
       
@@ -157,10 +138,14 @@ export function useAddTask() {
         }
       }
       
-      // Add to local storage regardless
-      const tasks = getLocalTasks();
-      const updatedTasks = [task, ...tasks];
-      saveLocalTasks(updatedTasks);
+      // If task doesn't have an ID yet (calendar integration failed or not used)
+      if (!task.id) {
+        const createdTask = await tasksCollection.create(task);
+        task = createdTask;
+      } else {
+        // Store the task from calendar in our local database too
+        await tasksCollection.create(task);
+      }
       
       return task;
     },
@@ -191,8 +176,7 @@ export function useToggleTask() {
   return useMutation({
     mutationFn: async (taskId: string) => {
       // Get the current task
-      const tasks = getLocalTasks();
-      const taskToToggle = tasks.find(task => task.id === taskId);
+      const taskToToggle = await tasksCollection.getById(taskId);
       
       if (!taskToToggle) {
         throw new Error('Task not found');
@@ -216,12 +200,11 @@ export function useToggleTask() {
       }
       
       // Update locally
-      const updatedTasks = tasks.map(task => 
-        task.id === taskId ? { ...task, completed: newCompletionStatus } : task
-      );
+      const updatedTask = await tasksCollection.update(taskId, { 
+        completed: newCompletionStatus 
+      });
       
-      saveLocalTasks(updatedTasks);
-      return updatedTasks.find(task => task.id === taskId);
+      return updatedTask;
     },
     onSuccess: (task) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -239,20 +222,66 @@ export function useToggleTask() {
 
 export function useDeleteTask() {
   const queryClient = useQueryClient();
+  const { user, hasCalendarAccess } = useAuth();
   
   return useMutation({
     mutationFn: async (taskId: string) => {
-      const tasks = getLocalTasks();
-      const updatedTasks = tasks.filter(task => task.id !== taskId);
-      saveLocalTasks(updatedTasks);
+      const task = await tasksCollection.getById(taskId);
+      
+      if (!task) {
+        throw new Error('Task not found');
+      }
+      
+      // Delete from Google Calendar if task is from calendar
+      if (task.isFromCalendar && hasCalendarAccess && user?.accessToken) {
+        try {
+          // Delete the event from Google Calendar
+          await fetch(
+            `https://www.googleapis.com/calendar/v3/calendars/primary/events/${taskId}`,
+            {
+              method: 'DELETE',
+              headers: {
+                Authorization: `Bearer ${user.accessToken}`,
+              },
+            }
+          );
+        } catch (error) {
+          console.error('Failed to delete Google Calendar event:', error);
+          // Continue with local deletion even if calendar deletion fails
+        }
+      }
+      
+      // Delete locally
+      await tasksCollection.delete(taskId);
       return taskId;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['calendarEvents'] });
       toast({
         title: "Task Deleted",
         description: "The task has been removed."
       });
     },
+    onError: (error) => {
+      console.error('Error deleting task:', error);
+      toast({
+        title: "Failed to Delete Task",
+        description: "There was an error deleting your task. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+}
+
+// Get completed tasks for habit tracking
+export function useCompletedTasks() {
+  return useQuery({
+    queryKey: ['completedTasks'],
+    queryFn: async () => {
+      const allTasks = await tasksCollection.getAll();
+      return allTasks.filter(task => task.completed);
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
